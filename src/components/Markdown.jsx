@@ -20,7 +20,8 @@ export function parseBlocks(text) {
   const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
   const blocks = [];
   let para = [];
-  let list = null; // { ordered, items }
+  let list = null; // { ordered, items, start }
+  let counter = 0; // keeps 1,2,3 going when bullets sit between numbered items
   let code = null; // { lines }
 
   const flushPara = () => {
@@ -28,7 +29,7 @@ export function parseBlocks(text) {
     para = [];
   };
   const flushList = () => {
-    if (list) blocks.push({ type: list.ordered ? "ol" : "ul", items: list.items });
+    if (list) blocks.push({ type: list.ordered ? "ol" : "ul", items: list.items, start: list.start });
     list = null;
   };
 
@@ -55,10 +56,16 @@ export function parseBlocks(text) {
       flushList();
       continue;
     }
+    if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) {
+      flushPara();
+      flushList();
+      continue; // ignore "---" divider lines
+    }
     const heading = line.match(/^\s{0,3}(#{1,4})\s+(.*)$/);
     if (heading) {
       flushPara();
       flushList();
+      counter = 0;
       blocks.push({ type: "h", level: heading[1].length, text: heading[2] });
       continue;
     }
@@ -69,8 +76,9 @@ export function parseBlocks(text) {
       const ordered = Boolean(number);
       if (!list || list.ordered !== ordered) {
         flushList();
-        list = { ordered, items: [] };
+        list = { ordered, items: [], start: counter + 1 };
       }
+      if (ordered) counter += 1;
       list.items.push((bullet || number)[1]);
       continue;
     }
@@ -100,7 +108,7 @@ export default function Markdown({ text }) {
           return <ul key={k}>{b.items.map((t, j) => <li key={k + j}>{inline(t, k + j)}</li>)}</ul>;
         }
         if (b.type === "ol") {
-          return <ol key={k}>{b.items.map((t, j) => <li key={k + j}>{inline(t, k + j)}</li>)}</ol>;
+          return <ol key={k} start={b.start}>{b.items.map((t, j) => <li key={k + j}>{inline(t, k + j)}</li>)}</ol>;
         }
         if (b.type === "code") {
           return <pre key={k}><code>{b.text}</code></pre>;
