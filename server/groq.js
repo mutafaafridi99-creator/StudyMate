@@ -7,7 +7,7 @@
 // GROQ_API_KEY environment variable. It is never sent to the browser.
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const DEFAULT_MODEL = "llama-3.3-70b-versatile";
+const DEFAULT_MODEL = "openai/gpt-oss-20b";
 const TIMEOUT_MS = 25000;
 
 const SUBJECTS = [
@@ -193,7 +193,9 @@ export async function handleAI({ method, body, apiKey, model }) {
     temperature: built.temperature,
     max_tokens: built.maxTokens,
   };
-  if (built.json) payload.response_format = { type: "json_object" };
+ 
+     // gpt-oss models "think" first; keep that short so answers are fast and never cut off.
+   if (payload.model.startsWith("openai/gpt-oss")) payload.reasoning_effort = "low";
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
