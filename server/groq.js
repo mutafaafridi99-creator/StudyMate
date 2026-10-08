@@ -223,8 +223,15 @@ export async function handleAI({ method, body, apiKey, model }) {
         "The AI service is busy right now (rate limit). Please wait a minute and try again."
       );
     }
-    if (!res.ok) {
-      return fail(502, "UPSTREAM", "The AI service had a problem. Please try again in a moment.");
+       if (!res.ok) {
+      let detail = "";
+      try {
+        const err = await res.json();
+        detail = (err && err.error && err.error.message) || "";
+      } catch {
+        detail = "";
+      }
+      return fail(502, "UPSTREAM", "The AI service had a problem (code " + res.status + "). " + String(detail).slice(0, 200));
     }
 
     let data;
